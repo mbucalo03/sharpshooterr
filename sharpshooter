@@ -1,0 +1,47 @@
+                auto targetPosition = target.headPosition;
+
+                import std.stdio;
+                //writefln!"Writing yaw: %s"(cameraPosition.yawTo(targetPosition));
+                //writefln!"Writing pitch: %s"(cameraPosition.pitchTo(targetPosition));
+
+                immutable controlAngles = getControlAngles;
+                immutable viewAngles = getViewAngles;
+                immutable currentYaw = controlAngles[1];
+                immutable currentPitch = controlAngles[0];
+
+                auto spread = 0.0F;
+                if (const spreadPointer = localPlayer.weaponName in spreadByWeapon)
+                {
+                    spread = *spreadPointer;
+                    targetPosition.z += 9;
+                }
+
+                immutable yawDifference = getDifferenceBetweenAngles(currentYaw, viewAngles[1]);
+                immutable pitchDifference = getDifferenceBetweenAngles(currentPitch, viewAngles[0]);
+                immutable neededYaw = normalize(cameraPosition.yawTo(targetPosition)
+                    - yawDifference * 2 * recoilCompensationScale);
+                immutable neededPitch = normalize(cameraPosition.pitchTo(targetPosition)
+                    - pitchDifference * 2 * recoilCompensationScale - spread / (180 / PI));
+                
+                immutable yawDelta = getDifferenceBetweenAngles(currentYaw, neededYaw);
+                immutable pitchDelta = getDifferenceBetweenAngles(currentPitch, neededPitch);
+                
+                if (GetKeyState(aimKey) < 0)
+                {
+                    immutable angle = atan2(pitchDelta, yawDelta);
+                    immutable distance = min(
+                        degreesPerSecond.toRadians / 128,
+                        sqrt(yawDelta ^^ 2 + pitchDelta ^^ 2));
+
+                    immutable smoothedYawDelta = cos(angle) * distance;
+                    
+                    immutable smoothedPitchDelta = sin(angle) * distance;
+                
+                    if (!smoothedYawDelta.isNaN && !smoothedPitchDelta.isNaN)
+                    {
+                        setControlAngles([
+                            currentPitch + smoothedPitchDelta,
+                            currentYaw + smoothedYawDelta
+                        ]);
+                    }
+                }
